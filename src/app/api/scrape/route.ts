@@ -7,11 +7,12 @@ import { preEvaluateJob } from '@/services/scraper/funnel';
 export async function POST(request: Request) {
   const startTime = Date.now();
   let url = '';
+  let rawHtml = '';
 
   try {
     const body = await request.json();
     url = body.url;
-    const rawHtml = body.raw_html;
+    rawHtml = body.raw_html || '';
 
     if (!url) {
       return NextResponse.json({ message: 'URL is required.' }, { status: 400 });
@@ -71,6 +72,16 @@ export async function POST(request: Request) {
   } catch (err: any) {
     const duration = Date.now() - startTime;
     console.error('Error in scrape handler:', err);
+
+    // Dump failed rawHtml to file for inspection
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      fs.writeFileSync(path.join(process.cwd(), 'src/test/debug_failed_scrape.html'), rawHtml || '');
+      console.log('Saved failed scrape HTML to src/test/debug_failed_scrape.html for debugging');
+    } catch (fsErr) {
+      console.error('Failed to write debug HTML file:', fsErr);
+    }
 
     // 6. Log failure details to database (captures message and call stack)
     await logAgentExecution({
