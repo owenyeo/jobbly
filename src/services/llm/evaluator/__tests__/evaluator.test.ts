@@ -76,6 +76,7 @@ const mockCreateEmbedding = vi.fn().mockResolvedValue({
 
 // Set environment variables for testing
 process.env.OPENAI_API_KEY = 'test-key';
+process.env.DEEPSEEK_API_KEY = 'test-key';
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://mock.supabase.co';
 process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'mock-key';
 

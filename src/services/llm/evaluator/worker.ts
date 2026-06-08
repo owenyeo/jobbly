@@ -1,5 +1,5 @@
 import { Worker } from 'bullmq';
-import { connection } from '../../../lib/queue';
+import { connectionOptions } from '../../../lib/queue';
 import { graph } from './graph';
 import { supabase } from './supabaseClient';
 
@@ -103,7 +103,7 @@ export const evaluatorWorker = new Worker(
   'evaluation-queue',
   evaluateJobHandler,
   {
-    connection: connection as any,
+    connection: connectionOptions,
     concurrency: 1, // Evaluate jobs sequentially to prevent LLM API rate-limiting
   }
 );
@@ -115,4 +115,8 @@ evaluatorWorker.on('completed', (job) => {
 
 evaluatorWorker.on('failed', (job, err) => {
   console.error(`[Worker] Job ${job?.id} failed with error: ${err.message}`);
+});
+
+evaluatorWorker.on('error', (err) => {
+  console.error('[Diagnostic Worker Error] Stack:', err.stack || err);
 });

@@ -42,17 +42,17 @@ export async function extractNode(state: EvaluationState): Promise<Partial<Evalu
 
     let structuredDescription = '';
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.DEEPSEEK_API_KEY;
     if (apiKey && apiKey !== 'test-key' && !apiKey.startsWith('mock')) {
-      // Real API call to OpenAI
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      // Real API call to DeepSeek
+      const response = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'deepseek-v4-flash',
           messages: [
             {
               role: 'system',
@@ -68,7 +68,7 @@ export async function extractNode(state: EvaluationState): Promise<Partial<Evalu
       });
 
       if (!response.ok) {
-        throw new Error(`OpenAI API request failed: ${response.statusText}`);
+        throw new Error(`DeepSeek API request failed: ${response.statusText}`);
       }
 
       const resBody = await response.json();
