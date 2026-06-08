@@ -17,7 +17,16 @@ const techKeywords = [
   'pyspark',
   'kafka',
   'langgraph',
-  'langchain'
+  'agent',
+  'machine learning',
+  'ai',
+  'test',
+  'engineer',
+  'llm',
+  'engineering',
+  'langchain',
+  'algorithm',
+  'deep learning'
 ];
 
 // Compile a regex for negative keywords with word boundaries
@@ -42,12 +51,12 @@ export function preEvaluateJob(jobTitle: string, rawHtml: string): FunnelResult 
   // Step 2: Broad Tech Taxonomy (Inclusion - Pass to LLM)
   // Strip HTML tags first as requested
   const strippedHtml = rawHtml.replace(/<[^>]*>/g, ' ');
-  
+
   // Slice to the first 1000 characters of tag-stripped text
   const htmlSnippet = strippedHtml.slice(0, 1000).toLowerCase();
 
   // Scan title and the first 1000 characters of raw_html
-  const hasTech = techKeywords.some(tech => 
+  const hasTech = techKeywords.some(tech =>
     normalizedTitle.includes(tech) || htmlSnippet.includes(tech)
   );
 

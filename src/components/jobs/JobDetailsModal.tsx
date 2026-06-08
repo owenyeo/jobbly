@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Edit3, FileText, Code, Check } from 'lucide-react';
+import { X, Calendar, Edit3, FileText, Code, Check, ExternalLink } from 'lucide-react';
 import { JobApplication } from '../shared/JobCard';
 
 interface JobDetailsModalProps {
@@ -151,9 +151,21 @@ export default function JobDetailsModal({
           </div>
 
           {/* Right Column: Edit Panel (Sticky Side) */}
-          <div className="w-80 shrink-0 bg-zinc-50/50 p-6 dark:bg-zinc-900/10 flex flex-col justify-between overflow-y-auto">
-            <div className="space-y-5">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400">Manage Pipeline</h3>
+          <div className="w-80 shrink-0 bg-zinc-50/50 p-6 dark:bg-zinc-900/10 flex flex-col justify-between overflow-y-auto border-l border-zinc-200/50 dark:border-zinc-800/50">
+            <div className="space-y-6">
+              {/* Apply / View Listing Link Button */}
+              <a
+                href={job.application_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow hover:bg-indigo-500 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                <span>Apply / View Listing</span>
+                <ExternalLink className="h-4 w-4" />
+              </a>
+
+              <div className="border-t border-zinc-200/80 dark:border-zinc-800/80 pt-5 space-y-5">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400">Manage Pipeline</h3>
 
               {/* Status Select */}
               <div className="flex flex-col gap-1.5">
@@ -199,8 +211,9 @@ export default function JobDetailsModal({
                 />
               </div>
             </div>
+          </div>
 
-            {/* Actions */}
+          {/* Actions */}
             <div className="mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-800 flex gap-2">
               <button
                 onClick={onClose}

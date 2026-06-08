@@ -125,10 +125,11 @@ export default function JobListItem({ job, onClick }: JobListItemProps) {
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()} // Prevent modal trigger
-          className="p-1 text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors hidden sm:block"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-indigo-600 hover:text-white dark:text-indigo-400 dark:hover:text-white border border-indigo-200 hover:bg-indigo-600 hover:border-indigo-600 dark:border-indigo-900/50 dark:hover:bg-indigo-600 dark:hover:border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 transition-all"
           title="Open application link"
         >
-          <ExternalLink className="h-4 w-4" />
+          <span>Apply</span>
+          <ExternalLink className="h-3.5 w-3.5" />
         </a>
       </div>
     </div>
