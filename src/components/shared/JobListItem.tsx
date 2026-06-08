@@ -60,10 +60,15 @@ export default function JobListItem({ job, onClick }: JobListItemProps) {
             <span className="text-zinc-300 dark:text-zinc-700 hidden sm:inline">•</span>
             <span className="flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5" />
-              {new Date(job.created_at).toLocaleDateString(undefined, {
-                month: 'short',
-                day: 'numeric',
-              })}
+              {(() => {
+                try {
+                  const d = new Date(job.created_at);
+                  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                  return `${d.getUTCDate()} ${months[d.getUTCMonth()]}`;
+                } catch {
+                  return '';
+                }
+              })()}
             </span>
           </div>
         </div>
