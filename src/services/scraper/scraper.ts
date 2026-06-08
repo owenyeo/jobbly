@@ -66,42 +66,86 @@ export async function scrapeJobUrl(url: string, preFetchedHtml?: string): Promis
   let job_title = '';
   let company_name = '';
 
-  switch (platform) {
-    case 'linkedin':
-      job_title = $('.top-card-layout__title, .topcard__title, h1').first().text().trim();
-      company_name = $('a.topcard__org-name-link, .topcard__org-name, [data-tracking-control-name="public_jobs_topcard-org-name"]').first().text().trim();
-      break;
-
-    case 'glassdoor':
-      job_title = $('[data-test="job-title"], .JobDetails_jobTitle').first().text().trim();
-      company_name = $('[data-test="employer-name"], .JobDetails_companyName').first().text().trim();
-      break;
-
-    case 'nodeflair':
-      job_title = $('h1.job-title, .job-title, h1').first().text().trim();
-      company_name = $('.company-name, a.company-name').first().text().trim();
-      break;
-
-    case 'other':
-    default:
-      // Heuristic fallback for general job listings
-      job_title = $('h1').first().text().trim();
-      company_name = $('h2').first().text().trim();
-
-      // If company name is still blank, try extracting it from document title tags
-      if (!company_name) {
-        const titleText = $('title').text();
-        if (titleText.includes('-')) {
-          // e.g. "Software Engineer - Google Careers"
-          company_name = titleText.split('-').pop()?.trim() || '';
+  // Try extracting from standard JSON-LD schema (Google JobPosting schema format)
+  $('script[type="application/ld+json"]').each((_, el) => {
+    try {
+      const content = $(el).html();
+      if (!content) return;
+      const json = JSON.parse(content);
+      const items = Array.isArray(json) ? json : [json];
+      for (const item of items) {
+        if (item['@context']?.includes('schema.org') && (item['@type'] === 'JobPosting' || item['type'] === 'JobPosting')) {
+          if (item.title && !job_title) {
+            job_title = item.title;
+          }
+          const orgName = item.hiringOrganization?.name || item.hiringOrganization;
+          if (typeof orgName === 'string' && !company_name) {
+            company_name = orgName;
+          }
         }
       }
-      break;
+    } catch (e) {
+      // Ignore invalid JSON-LD formats
+    }
+  });
+
+  // If fields are still empty, use CSS selector queries based on platform
+  if (!job_title || !company_name) {
+    switch (platform) {
+      case 'linkedin':
+        if (!job_title) {
+          job_title = $('.jobs-unified-top-card__job-title, .top-card-layout__title, .topcard__title, h1').first().text().trim();
+        }
+        if (!company_name) {
+          company_name = $('.jobs-unified-top-card__company-name, a.topcard__org-name-link, .topcard__org-name, [data-tracking-control-name="public_jobs_topcard-org-name"]').first().text().trim();
+        }
+        break;
+
+      case 'glassdoor':
+        if (!job_title) {
+          job_title = $('[data-test="job-title"], .JobDetails_jobTitle').first().text().trim();
+        }
+        if (!company_name) {
+          company_name = $('[data-test="employer-name"], .JobDetails_companyName').first().text().trim();
+        }
+        break;
+
+      case 'nodeflair':
+        if (!job_title) {
+          job_title = $('h1.job-title, .job-title, h1').first().text().trim();
+        }
+        if (!company_name) {
+          company_name = $('.company-name, a.company-name').first().text().trim();
+        }
+        break;
+
+      case 'other':
+      default:
+        break;
+    }
+  }
+
+  // Final fallbacks for missing values (generic selectors)
+  if (!job_title) {
+    job_title = $('h1').first().text().trim();
+  }
+  if (!company_name) {
+    company_name = $('h2').first().text().trim();
+
+    // If company name is still blank, extract from HTML <title> tag
+    if (!company_name) {
+      const titleText = $('title').text();
+      if (titleText.includes('-')) {
+        company_name = titleText.split('-').pop()?.trim() || '';
+      } else if (titleText.includes('|')) {
+        company_name = titleText.split('|').pop()?.trim() || '';
+      }
+    }
   }
 
   // Clean up any remaining whitespace noise
-  job_title = job_title.replace(/\s+/g, ' ');
-  company_name = company_name.replace(/\s+/g, ' ');
+  job_title = job_title.replace(/\s+/g, ' ').trim();
+  company_name = company_name.replace(/\s+/g, ' ').trim();
 
   // PHASE 3: Contract Validation
   if (!job_title || !company_name) {
