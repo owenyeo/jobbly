@@ -21,13 +21,15 @@ interface JobApplication {
   salary_min: number | null;
   salary_max: number | null;
   match_score?: number; // Optional match score for evaluation
+  structured_description?: string | null;
 }
 
 interface JobCardProps {
   job: JobApplication;
+  onClick?: () => void;
 }
 
-export default function JobCard({ job }: JobCardProps) {
+export default function JobCard({ job, onClick }: JobCardProps) {
   // Generate colors based on status
   const getMatchScoreColor = (score?: number) => {
     if (!score) return 'bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-300';
@@ -43,7 +45,10 @@ export default function JobCard({ job }: JobCardProps) {
     : 'Salary undisclosed';
 
   return (
-    <div className="group relative rounded-xl border border-zinc-200/80 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-indigo-200 dark:border-zinc-800/80 dark:bg-zinc-950 dark:hover:border-indigo-900/50">
+    <div
+      onClick={onClick}
+      className="group relative rounded-xl border border-zinc-200/80 bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md hover:border-indigo-200 dark:border-zinc-800/80 dark:bg-zinc-950 dark:hover:border-indigo-900/50 cursor-pointer"
+    >
       {/* Background soft glow on hover */}
       <div className="absolute inset-0 -z-10 rounded-xl bg-gradient-to-br from-indigo-50/50 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:from-indigo-950/20" />
       
@@ -83,6 +88,7 @@ export default function JobCard({ job }: JobCardProps) {
           href={job.application_link}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
           className="text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
           title="Open application link"
         >

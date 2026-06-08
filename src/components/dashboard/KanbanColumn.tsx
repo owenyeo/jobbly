@@ -8,6 +8,7 @@ interface KanbanColumnProps {
   jobs: JobApplication[];
   state: 'loading' | 'empty' | 'success';
   onTriggerScraper?: () => void;
+  onJobClick?: (job: JobApplication) => void;
 }
 
 export default function KanbanColumn({
@@ -16,6 +17,7 @@ export default function KanbanColumn({
   jobs,
   state,
   onTriggerScraper,
+  onJobClick,
 }: KanbanColumnProps) {
   const isColumnEmpty = jobs.length === 0;
 
@@ -79,7 +81,7 @@ export default function KanbanColumn({
           </div>
         ) : (
           // Normal success state: list of cards
-          jobs.map((job) => <JobCard key={job.uuid} job={job} />)
+          jobs.map((job) => <JobCard key={job.uuid} job={job} onClick={() => onJobClick?.(job)} />)
         )}
       </div>
     </div>

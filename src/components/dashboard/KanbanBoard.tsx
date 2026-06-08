@@ -6,6 +6,7 @@ interface KanbanBoardProps {
   jobs: JobApplication[];
   state: 'loading' | 'empty' | 'success';
   onTriggerScraper?: () => void;
+  onJobClick?: (job: JobApplication) => void;
 }
 
 const COLUMNS = [
@@ -23,6 +24,7 @@ export default function KanbanBoard({
   jobs = [],
   state = 'success',
   onTriggerScraper,
+  onJobClick,
 }: KanbanBoardProps) {
   return (
     <div className="flex h-full w-full gap-5 overflow-x-auto pb-6 pt-2 pr-4 scrollbar-thin scrollbar-thumb-zinc-200 dark:scrollbar-thumb-zinc-800">
@@ -46,6 +48,7 @@ export default function KanbanBoard({
             jobs={columnJobs}
             state={columnState}
             onTriggerScraper={onTriggerScraper}
+            onJobClick={onJobClick}
           />
         );
       })}

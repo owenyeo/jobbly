@@ -2,10 +2,11 @@
 
 import React, { useState } from 'react';
 import KanbanBoard from '@/components/dashboard/KanbanBoard';
+import ApplicationModal from '@/components/dashboard/ApplicationModal';
 import { JobApplication } from '@/components/shared/JobCard';
-import { Layers, CheckCircle2, CalendarDays, TrendingUp, BarChart3 } from 'lucide-react';
+import { Layers, CheckCircle2, TrendingUp, BarChart3 } from 'lucide-react';
 
-const mockJobs: JobApplication[] = [
+const initialMockJobs: JobApplication[] = [
   {
     uuid: '1',
     company_name: 'Google',
@@ -100,15 +101,29 @@ const mockJobs: JobApplication[] = [
 ];
 
 export default function DashboardPage() {
+  const [jobs, setJobs] = useState<JobApplication[]>(initialMockJobs);
   const [boardState, setBoardState] = useState<'success' | 'loading' | 'empty'>('success');
+  const [selectedJob, setSelectedJob] = useState<JobApplication | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Trigger scraper mock action
   const handleTriggerScraper = () => {
     alert('Mock Action: Scraper engine triggered!');
   };
 
+  const handleJobClick = (job: JobApplication) => {
+    setSelectedJob(job);
+    setIsModalOpen(true);
+  };
+
+  const handleSaveJob = (updatedJob: JobApplication) => {
+    setJobs((prevJobs) =>
+      prevJobs.map((job) => (job.uuid === updatedJob.uuid ? updatedJob : job))
+    );
+  };
+
   // Derive metrics from mock jobs (only applicable if we are in success state)
-  const jobsToUse = boardState === 'success' ? mockJobs : [];
+  const jobsToUse = boardState === 'success' ? jobs : [];
   const totalCount = jobsToUse.length;
   
   const appliedCount = jobsToUse.filter((j) => 
@@ -213,8 +228,17 @@ export default function DashboardPage() {
           jobs={jobsToUse}
           state={boardState}
           onTriggerScraper={handleTriggerScraper}
+          onJobClick={handleJobClick}
         />
       </div>
+
+      {/* Detailed View Modal */}
+      <ApplicationModal
+        job={selectedJob}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSaveJob}
+      />
     </div>
   );
 }
