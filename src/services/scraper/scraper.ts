@@ -24,6 +24,46 @@ export function identifyPlatform(url: string): ScraperPayload['source_platform']
 }
 
 /**
+ * Parses LinkedIn page title tags. Tab titles are static text which
+ * bypasses client-side React CSS module class name obfuscation hashes.
+ */
+function parseLinkedInTitle(titleText: string): { jobTitle: string; companyName: string } {
+  const cleanText = titleText.replace(/\s+/g, ' ').trim();
+  const parts = cleanText.split('|').map(p => p.trim()).filter(Boolean);
+
+  let jobTitle = '';
+  let companyName = '';
+
+  if (parts.length >= 3 && parts[parts.length - 1].toLowerCase() === 'linkedin') {
+    // e.g. "Software Engineer | TikTok | LinkedIn"
+    jobTitle = parts[0];
+    companyName = parts[1];
+  } else if (parts.length === 2 && parts[1].toLowerCase() === 'linkedin') {
+    // e.g. "Software Engineer at Google | LinkedIn" or "Google hiring Software Engineer... | LinkedIn"
+    const content = parts[0];
+    if (content.includes(' at ')) {
+      const sub = content.split(' at ');
+      jobTitle = sub[0].trim();
+      companyName = sub[1].trim();
+    } else if (content.includes(' hiring ')) {
+      const sub = content.split(' hiring ');
+      companyName = sub[0].trim();
+      const jobAndLoc = sub[1];
+      if (jobAndLoc.includes(' in ')) {
+        jobTitle = jobAndLoc.split(' in ')[0].trim();
+      } else {
+        jobTitle = jobAndLoc.trim();
+      }
+    }
+  } else if (parts.length >= 2) {
+    jobTitle = parts[0];
+    companyName = parts[1];
+  }
+
+  return { jobTitle, companyName };
+}
+
+/**
  * Helper to fetch HTML. Uses ScraperAPI if an API key is available,
  * otherwise falls back to a direct fetch with spoofed User-Agent.
  */
@@ -94,6 +134,15 @@ export async function scrapeJobUrl(url: string, preFetchedHtml?: string): Promis
   if (!job_title || !company_name) {
     switch (platform) {
       case 'linkedin':
+        // 1. Try to extract from the document <title> tag
+        const pageTitle = $('title').first().text();
+        if (pageTitle) {
+          const parsed = parseLinkedInTitle(pageTitle);
+          if (parsed.jobTitle) job_title = parsed.jobTitle;
+          if (parsed.companyName) company_name = parsed.companyName;
+        }
+
+        // 2. Fall back to DOM queries (including company links and obfuscated details)
         if (!job_title) {
           job_title = $(
             '.job-details-jobs-unified-top-card__job-title, ' +
@@ -110,6 +159,7 @@ export async function scrapeJobUrl(url: string, preFetchedHtml?: string): Promis
             '.job-details-jobs-unified-top-card__company-name, ' +
             '.jobs-unified-top-card__company-name, ' +
             '.jobs-details-top-card__company-name, ' +
+            'a[href*="/company/"], ' +
             'a.topcard__org-name-link, ' +
             '.topcard__org-name, ' +
             '.jobs-unified-top-card__primary-description-container a, ' +
