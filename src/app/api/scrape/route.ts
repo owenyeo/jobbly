@@ -3,6 +3,23 @@ import { createClient } from '@/lib/supabase/server';
 import { logAgentExecution } from '@/lib/logger';
 import { scrapeJobUrl } from '@/services/scraper/scraper';
 import { preEvaluateJob } from '@/services/scraper/funnel';
+import { evaluationQueue } from '@/lib/queue';
+
+// Helper to push to queue with retry logic
+async function enqueueWithRetries(jobId: string, retries = 2, delayMs = 100): Promise<boolean> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      await evaluationQueue.add('evaluate-job', { job_application_uuid: jobId });
+      return true; // Enqueued successfully
+    } catch (err) {
+      console.warn(`Queue insertion failed on attempt ${attempt}/${retries}:`, err);
+      if (attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+  return false; // All retries failed
+}
 
 export async function POST(request: Request) {
   const startTime = Date.now();
@@ -19,7 +36,6 @@ export async function POST(request: Request) {
     }
 
     // 1. Write 'running' state in agent logs
-    // We log the scraper execution start
     await logAgentExecution({
       agent_name: 'scraper',
       status: 'running',
@@ -53,20 +69,41 @@ export async function POST(request: Request) {
       throw new Error(`Database Insert Failed: ${dbError.message}`);
     }
 
+    // 4.5. Enqueue for LLM Evaluation ONLY if the decision is 'pass'
+    let queueSuccess = true;
+    if (decision === 'pass') {
+      queueSuccess = await enqueueWithRetries(job.uuid, 2, 100);
+    }
+
     const duration = Date.now() - startTime;
 
-    // 5. Update agent log to 'success'
-    await logAgentExecution({
-      agent_name: 'scraper',
-      status: 'success',
-      execution_time_ms: duration,
-    });
+    // 5. Update agent log to 'success' (or log queue warning)
+    if (decision === 'pass' && !queueSuccess) {
+      await logAgentExecution({
+        agent_name: 'scraper',
+        status: 'failed',
+        error: 'Valkey/Queue connection offline. Job saved but enqueuing failed.',
+        execution_time_ms: duration,
+      });
+    } else {
+      await logAgentExecution({
+        agent_name: 'scraper',
+        status: 'success',
+        execution_time_ms: duration,
+      });
+    }
+
+    let responseMessage = `Job scraped and decided as '${decision}' successfully!`;
+    if (decision === 'pass' && !queueSuccess) {
+      responseMessage += ' Note: AI evaluation is pending because the queue is temporarily down.';
+    }
 
     return NextResponse.json({
       success: true,
       job_id: job.uuid,
       decision,
-      message: `Job scraped and decided as '${decision}' successfully!`,
+      message: responseMessage,
+      queue_status: decision === 'pass' ? (queueSuccess ? 'enqueued' : 'pending') : 'skipped',
     });
 
   } catch (err: any) {
