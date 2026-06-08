@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader2, CheckCircle2, AlertCircle, HelpCircle } from 'lucide-react';
-import { AgentExecutionLog } from './__tests__/filterLogs.test';
+import { AgentExecutionLog } from '@/types';
 
 interface LogTableProps {
   logs: AgentExecutionLog[];

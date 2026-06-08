@@ -5,106 +5,45 @@ import KanbanBoard from '@/components/dashboard/KanbanBoard';
 import ApplicationModal from '@/components/dashboard/ApplicationModal';
 import { JobApplication } from '@/components/shared/JobCard';
 import { Layers, CheckCircle2, TrendingUp, BarChart3 } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
-const initialMockJobs: JobApplication[] = [
-  {
-    uuid: '1',
-    company_name: 'Google',
-    job_title: 'Software Engineer (Systems)',
-    location: 'Singapore',
-    work_mode: 'hybrid',
-    application_link: 'https://careers.google.com/jobs/1',
-    created_at: new Date().toISOString(),
-    status: 'saved',
-    salary_min: 8000,
-    salary_max: 11000,
-    match_score: 92,
-  },
-  {
-    uuid: '2',
-    company_name: 'Stripe',
-    job_title: 'Forward Deployed Engineer',
-    location: 'Singapore',
-    work_mode: 'remote',
-    application_link: 'https://stripe.com/jobs/2',
-    created_at: new Date().toISOString(),
-    status: 'applied',
-    salary_min: 9000,
-    salary_max: 13000,
-    match_score: 88,
-  },
-  {
-    uuid: '3',
-    company_name: 'Bytedance',
-    job_title: 'Backend Engineer (Data Platform)',
-    location: 'Singapore',
-    work_mode: 'on_site',
-    application_link: 'https://careers.bytedance.com/jobs/3',
-    created_at: new Date().toISOString(),
-    status: 'applied',
-    salary_min: 7500,
-    salary_max: 10500,
-    match_score: 74,
-  },
-  {
-    uuid: '4',
-    company_name: 'Grab',
-    job_title: 'Machine Learning Engineer',
-    location: 'Singapore',
-    work_mode: 'hybrid',
-    application_link: 'https://grab.careers/jobs/4',
-    created_at: new Date().toISOString(),
-    status: 'scheduling',
-    salary_min: 8500,
-    salary_max: 12000,
-    match_score: 81,
-  },
-  {
-    uuid: '5',
-    company_name: 'Shopee',
-    job_title: 'Full Stack Developer',
-    location: 'Singapore',
-    work_mode: 'on_site',
-    application_link: 'https://careers.shopee.sg/jobs/5',
-    created_at: new Date().toISOString(),
-    status: 'technical_interview',
-    salary_min: 6500,
-    salary_max: 9500,
-    match_score: 68,
-  },
-  {
-    uuid: '6',
-    company_name: 'Canva',
-    job_title: 'Frontend Engineer',
-    location: 'Remote',
-    work_mode: 'remote',
-    application_link: 'https://canva.com/careers/6',
-    created_at: new Date().toISOString(),
-    status: 'HR_round',
-    salary_min: 8000,
-    salary_max: 11000,
-    match_score: 95,
-  },
-  {
-    uuid: '7',
-    company_name: 'Meta',
-    job_title: 'Production Engineer',
-    location: 'Singapore',
-    work_mode: 'hybrid',
-    application_link: 'https://meta.com/careers/7',
-    created_at: new Date().toISOString(),
-    status: 'rejected',
-    salary_min: 10000,
-    salary_max: 14000,
-    match_score: 90,
-  },
-];
+
 
 export default function DashboardPage() {
-  const [jobs, setJobs] = useState<JobApplication[]>(initialMockJobs);
+  const [jobs, setJobs] = useState<JobApplication[]>([]);
   const [boardState, setBoardState] = useState<'success' | 'loading' | 'empty'>('success');
   const [selectedJob, setSelectedJob] = useState<JobApplication | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  React.useEffect(() => {
+    async function loadData() {
+      try {
+        const supabase = await createClient();
+
+        const { data, error } = await supabase
+          .from('job_applications')
+          .select(`
+            *,
+            job_embeddings (
+              match_score
+            )
+          `)
+          .order('created_at', { ascending: false });
+
+        const formattedJobs = data?.map(job => ({
+          ...job,
+          match_score: job.job_embeddings?.[0]?.match_score ?? undefined
+        })) || [];
+
+        setJobs(formattedJobs);
+        setBoardState(formattedJobs.length === 0 ? 'empty' : 'success');
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        setBoardState('empty');
+      }
+    }
+    loadData();
+  }, []);
 
   // Trigger scraper mock action
   const handleTriggerScraper = () => {
@@ -125,8 +64,8 @@ export default function DashboardPage() {
   // Derive metrics from mock jobs (only applicable if we are in success state)
   const jobsToUse = boardState === 'success' ? jobs : [];
   const totalCount = jobsToUse.length;
-  
-  const appliedCount = jobsToUse.filter((j) => 
+
+  const appliedCount = jobsToUse.filter((j) =>
     j.status !== 'saved'
   ).length;
 
@@ -134,8 +73,8 @@ export default function DashboardPage() {
     ['scheduling', 'technical_interview', 'behavioural_interview', 'HR_round'].includes(j.status)
   ).length;
 
-  const conversionRate = appliedCount > 0 
-    ? Math.round((interviewCount / appliedCount) * 100) 
+  const conversionRate = appliedCount > 0
+    ? Math.round((interviewCount / appliedCount) * 100)
     : 0;
 
   const avgMatchScore = jobsToUse.length > 0

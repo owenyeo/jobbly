@@ -1,4 +1,4 @@
-import { AgentExecutionLog } from './__tests__/filterLogs.test';
+import { AgentExecutionLog } from '@/types';
 
 export interface LogFilterOptions {
   status?: string;

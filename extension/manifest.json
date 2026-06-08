@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Jobbly Job Clipper",
+  "version": "1.0.0",
+  "description": "Clips job listings from LinkedIn, Glassdoor, and NodeFlair and saves them directly to Jobbly.",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://localhost:3000/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
+    }
+  }
+}

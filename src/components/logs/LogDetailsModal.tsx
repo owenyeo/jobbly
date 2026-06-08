@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Clock, Calendar, AlertTriangle, Terminal, Cpu } from 'lucide-react';
-import { AgentExecutionLog } from './__tests__/filterLogs.test';
+import { AgentExecutionLog } from '@/types';
 
 interface LogDetailsModalProps {
   log: AgentExecutionLog | null;

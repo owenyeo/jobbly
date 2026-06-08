@@ -1,14 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { filterAndSortLogs, LogFilterOptions, LogSortOptions } from '../logUtils';
 
-interface AgentExecutionLog {
-  uuid: string;
-  agent_name: string;
-  status: 'running' | 'failed' | 'idle' | 'success';
-  error_message: string | null;
-  execution_time_ms: number | null;
-  created_at: string;
-}
+import { AgentExecutionLog } from '@/types';
 
 const mockLogs: AgentExecutionLog[] = [
   {

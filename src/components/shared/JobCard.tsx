@@ -1,28 +1,7 @@
 import React from 'react';
 import { ExternalLink, MapPin, Briefcase } from 'lucide-react';
 
-interface JobApplication {
-  uuid: string;
-  company_name: string;
-  job_title: string;
-  location: string | null;
-  work_mode: 'remote' | 'hybrid' | 'on_site';
-  application_link: string;
-  created_at: string;
-  status:
-    | 'saved'
-    | 'applied'
-    | 'rejected'
-    | 'ghosted'
-    | 'scheduling'
-    | 'technical_interview'
-    | 'behavioural_interview'
-    | 'HR_round';
-  salary_min: number | null;
-  salary_max: number | null;
-  match_score?: number; // Optional match score for evaluation
-  structured_description?: string | null;
-}
+import { JobApplication } from '@/types';
 
 interface JobCardProps {
   job: JobApplication;

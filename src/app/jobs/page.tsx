@@ -7,86 +7,41 @@ import JobDetailsModal from '@/components/jobs/JobDetailsModal';
 import { filterAndSortJobs, JobFilterOptions, JobSortOptions } from '@/components/jobs/filterUtils';
 import { JobApplication } from '@/components/shared/JobCard';
 import { Briefcase, SlidersHorizontal, LayoutList } from 'lucide-react';
-
-const mockJobs: JobApplication[] = [
-  {
-    uuid: '11111111-1111-1111-1111-111111111111',
-    company_name: 'Apple',
-    job_title: 'iOS Engineer',
-    location: 'Singapore',
-    work_mode: 'on_site',
-    application_link: 'https://apple.com/careers',
-    created_at: '2026-06-01T00:00:00.000Z',
-    status: 'saved',
-    salary_min: 6000,
-    salary_max: 8000,
-    match_score: 95,
-    structured_description: 'Responsible for building next-generation core frameworks for iOS devices. Works closely with designer teams.',
-  },
-  {
-    uuid: '22222222-2222-2222-2222-222222222222',
-    company_name: 'Google',
-    job_title: 'Backend Developer',
-    location: 'Singapore',
-    work_mode: 'hybrid',
-    application_link: 'https://careers.google.com',
-    created_at: '2026-06-03T00:00:00.000Z',
-    status: 'applied',
-    salary_min: 8000,
-    salary_max: 12000,
-    match_score: 85,
-    structured_description: 'Scale systems pipelines using distributed queues and transactional datastores. Core stacks: Go, GCP, Spanner.',
-  },
-  {
-    uuid: '33333333-3333-3333-3333-333333333333',
-    company_name: 'Meta',
-    job_title: 'Frontend Developer',
-    location: 'Remote',
-    work_mode: 'remote',
-    application_link: 'https://meta.com/careers',
-    created_at: '2026-06-02T00:00:00.000Z',
-    status: 'technical_interview',
-    salary_min: 9000,
-    salary_max: 14000,
-    match_score: 70,
-    structured_description: 'Craft beautiful user experiences in React, Relay, and GraphQL. Deep interest in browser loading performance.',
-  },
-  {
-    uuid: '44444444-4444-4444-4444-444444444444',
-    company_name: 'Stripe',
-    job_title: 'Forward Deployed Engineer',
-    location: 'Singapore',
-    work_mode: 'remote',
-    application_link: 'https://stripe.com/jobs',
-    created_at: '2026-06-04T00:00:00.000Z',
-    status: 'scheduling',
-    salary_min: 9000,
-    salary_max: 13000,
-    match_score: 88,
-    structured_description: 'Integrating Stripe products for enterprise clients. System integration layout and custom code design.',
-  },
-  {
-    uuid: '55555555-5555-5555-5555-555555555555',
-    company_name: 'Grab',
-    job_title: 'Software Intern',
-    location: 'Singapore',
-    work_mode: 'hybrid',
-    application_link: 'https://grab.careers',
-    created_at: '2026-06-05T00:00:00.000Z',
-    status: 'saved',
-    salary_min: null,
-    salary_max: null,
-    // match_score undefined to showcase raw / unparsed jobs
-    structured_description: '',
-  },
-];
+import { createClient } from '@/lib/supabase/client';
 
 export default function JobsPage() {
-  const [jobs, setJobs] = useState<JobApplication[]>(mockJobs);
+  const [jobs, setJobs] = useState<JobApplication[]>([]);
   const [filters, setFilters] = useState<JobFilterOptions>({});
   const [sort, setSort] = useState<JobSortOptions>({ by: 'date', order: 'desc' });
   const [selectedJob, setSelectedJob] = useState<JobApplication | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  React.useEffect(() => {
+    async function loadData() {
+      try {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+          .from('job_applications')
+          .select(`
+            *,
+            job_embeddings (
+              match_score
+            )
+          `)
+          .order('created_at', { ascending: false });
+
+        const formattedJobs = data?.map(job => ({
+          ...job,
+          match_score: job.job_embeddings?.[0]?.match_score ?? undefined
+        })) || [];
+
+        setJobs(formattedJobs);
+      } catch (error) {
+        console.error('Error loading jobs:', error);
+      }
+    }
+    loadData();
+  }, []);
 
   // Compute unique locations for location filter dropdown
   const uniqueLocations = useMemo(() => {
