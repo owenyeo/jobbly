@@ -66,6 +66,7 @@ export async function scrapeJobUrl(url: string, preFetchedHtml?: string): Promis
   let job_title = '';
   let company_name = '';
 
+
   // Try extracting from standard JSON-LD schema (Google JobPosting schema format)
   $('script[type="application/ld+json"]').each((_, el) => {
     try {
@@ -94,10 +95,26 @@ export async function scrapeJobUrl(url: string, preFetchedHtml?: string): Promis
     switch (platform) {
       case 'linkedin':
         if (!job_title) {
-          job_title = $('.jobs-unified-top-card__job-title, .top-card-layout__title, .topcard__title, h1').first().text().trim();
+          job_title = $(
+            '.job-details-jobs-unified-top-card__job-title, ' +
+            '.jobs-unified-top-card__job-title, ' +
+            '.top-card-layout__title, ' +
+            '.topcard__title, ' +
+            '.jobs-unified-top-card h1, ' +
+            '.job-details-jobs-unified-top-card h1, ' +
+            '.jobs-details h1'
+          ).first().text().trim();
         }
         if (!company_name) {
-          company_name = $('.jobs-unified-top-card__company-name, a.topcard__org-name-link, .topcard__org-name, [data-tracking-control-name="public_jobs_topcard-org-name"]').first().text().trim();
+          company_name = $(
+            '.job-details-jobs-unified-top-card__company-name, ' +
+            '.jobs-unified-top-card__company-name, ' +
+            '.jobs-details-top-card__company-name, ' +
+            'a.topcard__org-name-link, ' +
+            '.topcard__org-name, ' +
+            '.jobs-unified-top-card__primary-description-container a, ' +
+            '[data-tracking-control-name="public_jobs_topcard-org-name"]'
+          ).first().text().trim();
         }
         break;
 
