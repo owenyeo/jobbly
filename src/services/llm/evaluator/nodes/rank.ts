@@ -84,12 +84,11 @@ export async function rankNode(state: EvaluationState): Promise<Partial<Evaluati
       console.warn(`Warning: Could not update embedding score row: ${updateEmbedError.message}`);
     }
 
-    // 3. Update job_applications table: set match_score, structured_description, agent_decision
+    // 3. Update job_applications table: set structured_description, agent_decision
     // AND prune raw_html (setting it to null) since pipeline ran successfully
     const { error: updateAppError } = await supabase
       .from('job_applications')
       .update({
-        match_score: score,
         structured_description: structured_description,
         agent_decision: decision,
         raw_html: null, // Prune database content on success
