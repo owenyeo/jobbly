@@ -43,6 +43,32 @@ import('./worker').then(({ evaluatorWorker }) => {
   console.log('   Redis/Valkey: ' + (process.env.REDIS_URL ? 'Connected to Aiven Cloud' : '127.0.0.1:6379'));
   console.log('==================================================');
 
+  // Register repeatable NodeFlair poller cron job (runs daily at midnight)
+  import('../../../lib/queue').then(async ({ evaluationQueue }) => {
+    try {
+      console.log('[Worker] Registering repeatable NodeFlair feed poller cron job...');
+      const oldJobs = await evaluationQueue.getRepeatableJobs();
+      for (const job of oldJobs) {
+        if (job.name === 'poll-nodeflair') {
+          await evaluationQueue.removeRepeatableByKey(job.key);
+          console.log(`[Worker] Removed old repeatable poller: ${job.key}`);
+        }
+      }
+      await evaluationQueue.add('poll-nodeflair', {}, {
+        repeat: {
+          cron: '0 0 * * *',
+        }
+      });
+      console.log('[Worker] Repeatable NodeFlair poller registered successfully (Pattern: daily at midnight).');
+
+      // Immediate trigger for user testing/verification on startup
+      await evaluationQueue.add('poll-nodeflair', {});
+      console.log('[Worker] Enqueued immediate one-off NodeFlair poller job for testing.');
+    } catch (err) {
+      console.error('[Worker] Failed to register repeatable NodeFlair poller job:', err);
+    }
+  });
+
   // Graceful shutdown handling
   process.on('SIGTERM', async () => {
     console.log('[Worker] SIGTERM received. Shutting down worker gracefully...');
