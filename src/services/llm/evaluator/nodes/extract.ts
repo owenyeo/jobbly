@@ -13,7 +13,7 @@ export async function extractNode(state: EvaluationState): Promise<Partial<Evalu
     if (!rawHtml && state.job_application_uuid) {
       const { data, error } = await supabase
         .from('job_applications')
-        .select('raw_html, job_title, company_name')
+        .select('raw_html, job_title, company_name, structured_description')
         .eq('uuid', state.job_application_uuid)
         .single();
 
@@ -24,6 +24,16 @@ export async function extractNode(state: EvaluationState): Promise<Partial<Evalu
         rawHtml = data.raw_html;
         jobTitle = data.job_title || jobTitle;
         companyName = data.company_name || companyName;
+
+        // If raw_html is null but we already have a structured description, reuse it and skip extraction
+        if (!rawHtml && data.structured_description) {
+          return {
+            raw_html: null,
+            job_title: jobTitle,
+            company_name: companyName,
+            structured_description: data.structured_description,
+          };
+        }
       }
     }
 
