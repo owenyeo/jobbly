@@ -52,6 +52,7 @@ export default function GlobalHeader() {
     { name: 'Dashboard', href: '/dashboard' },
     { name: 'Jobs', href: '/jobs' },
     { name: 'Logs', href: '/dashboard/logs' },
+    { name: 'Profile', href: '/profile' },
   ];
 
   return (

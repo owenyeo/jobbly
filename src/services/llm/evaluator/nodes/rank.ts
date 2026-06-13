@@ -24,6 +24,48 @@ export async function rankNode(state: EvaluationState): Promise<Partial<Evaluati
   const { job_application_uuid, structured_description } = state;
 
   try {
+    // 0. Resolve the normalized candidate profile vector dynamically
+    let normalizedCandidateVector = NORMALIZED_CANDIDATE_VECTOR;
+
+    // Check if the service role key is configured in the environment
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      try {
+        const { data: profileData, error: profileError } = await supabase
+          .from('candidate_profile')
+          .select('embedding')
+          .limit(1);
+
+        if (profileError) {
+          console.warn('Warning: Failed to fetch profile via database:', profileError.message);
+        } else if (profileData && profileData.length > 0) {
+          const profile = profileData[0];
+          let userEmbedding: number[] = [];
+          if (typeof profile.embedding === 'string') {
+            const cleanStr = profile.embedding.replace('[', '').replace(']', '');
+            userEmbedding = cleanStr.split(',').map(Number);
+          } else if (Array.isArray(profile.embedding)) {
+            userEmbedding = profile.embedding;
+          }
+
+          if (userEmbedding.length === 1536) {
+            const magnitudeUser = Math.sqrt(userEmbedding.reduce((sum, val) => sum + val * val, 0));
+            if (magnitudeUser > 0) {
+              normalizedCandidateVector = userEmbedding.map(val => val / magnitudeUser);
+              console.log('Successfully fetched and using custom resume embedding from candidate_profile table.');
+            }
+          } else {
+            console.warn('Warning: Fetched candidate_profile embedding is invalid or not 1536 dimensions.');
+          }
+        } else {
+          console.log('No user with resume embedding found in candidate_profile table. Falling back to default candidate vector.');
+        }
+      } catch (adminErr) {
+        console.warn('Warning: Failed to fetch resume embedding via database:', adminErr);
+      }
+    } else {
+      console.log('SUPABASE_SERVICE_ROLE_KEY is not set. Falling back to default candidate vector.');
+    }
+
     // 1. Fetch the saved embedding from Supabase
     const { data: embeddingData, error: fetchError } = await supabase
       .from('job_embeddings')
@@ -56,7 +98,7 @@ export async function rankNode(state: EvaluationState): Promise<Partial<Evaluati
 
     let dotProduct = 0;
     for (let i = 0; i < 1536; i++) {
-      dotProduct += normalizedJobVector[i] * NORMALIZED_CANDIDATE_VECTOR[i];
+      dotProduct += normalizedJobVector[i] * normalizedCandidateVector[i];
     }
 
     // Map similarity score to percentage between 0 and 100

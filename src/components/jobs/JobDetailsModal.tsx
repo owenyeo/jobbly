@@ -1,5 +1,8 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Edit3, FileText, Code, Check, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
+import { X, Edit3, FileText, Code, ExternalLink } from 'lucide-react';
 import { JobApplication } from '../shared/JobCard';
 
 interface JobDetailsModalProps {
@@ -7,6 +10,7 @@ interface JobDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave?: (updatedJob: JobApplication) => void;
+  onDelete?: (jobUuid: string) => void;
 }
 
 export default function JobDetailsModal({
@@ -14,12 +18,14 @@ export default function JobDetailsModal({
   isOpen,
   onClose,
   onSave,
+  onDelete,
 }: JobDetailsModalProps) {
   const [activeTab, setActiveTab] = useState<'structured' | 'raw'>('structured');
   const [status, setStatus] = useState<JobApplication['status']>('saved');
   const [interviewDate, setInterviewDate] = useState('');
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Sync state with selected job
   useEffect(() => {
@@ -47,6 +53,32 @@ export default function JobDetailsModal({
       setIsSaving(false);
       onClose();
     }, 500); // Mock delay for premium interaction feel
+  };
+
+  const handleDeleteClick = async () => {
+    if (!window.confirm('Are you sure you want to delete this job listing? This action cannot be undone.')) {
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/jobs/${job.uuid}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        if (onDelete) {
+          onDelete(job.uuid);
+        }
+        onClose();
+      } else {
+        const data = await res.json();
+        alert(data.message || 'Failed to delete job.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('An error occurred while deleting the job.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const getMatchScoreColors = (score?: number) => {
@@ -164,67 +196,87 @@ export default function JobDetailsModal({
                 <ExternalLink className="h-4 w-4" />
               </a>
 
+              {/* Edit Details Link */}
+              <Link
+                href={`/jobs/${job.uuid}/edit`}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                <Edit3 className="h-4 w-4" />
+                <span>Edit Job Details</span>
+              </Link>
+
               <div className="border-t border-zinc-200/80 dark:border-zinc-800/80 pt-5 space-y-5">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-400">Manage Pipeline</h3>
 
-              {/* Status Select */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Application Status</label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as any)}
-                  className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-xs font-medium outline-none focus:border-indigo-500 dark:border-zinc-800 dark:bg-zinc-950"
-                >
-                  <option value="saved">Saved</option>
-                  <option value="applied">Applied</option>
-                  <option value="scheduling">Scheduling</option>
-                  <option value="technical_interview">Technical Interview</option>
-                  <option value="behavioural_interview">Behavioural Interview</option>
-                  <option value="HR_round">HR Round</option>
-                  <option value="ghosted">Ghosted</option>
-                  <option value="rejected">Rejected</option>
-                </select>
-              </div>
+                {/* Status Select */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Application Status</label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as any)}
+                    className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-xs font-medium outline-none focus:border-indigo-500 dark:border-zinc-800 dark:bg-zinc-950"
+                  >
+                    <option value="saved">Saved</option>
+                    <option value="applied">Applied</option>
+                    <option value="scheduling">Scheduling</option>
+                    <option value="technical_interview">Technical Interview</option>
+                    <option value="behavioural_interview">Behavioural Interview</option>
+                    <option value="HR_round">HR Round</option>
+                    <option value="ghosted">Ghosted</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </div>
 
-              {/* Scheduler Input */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Schedule Interview</label>
-                <div className="relative">
-                  <input
-                    type="datetime-local"
-                    value={interviewDate}
-                    onChange={(e) => setInterviewDate(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-xs font-medium outline-none focus:border-indigo-500 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-300"
+                {/* Scheduler Input */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Schedule Interview</label>
+                  <div className="relative">
+                    <input
+                      type="datetime-local"
+                      value={interviewDate}
+                      onChange={(e) => setInterviewDate(e.target.value)}
+                      className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-xs font-medium outline-none focus:border-indigo-500 dark:border-zinc-800 dark:bg-zinc-950 text-zinc-650 dark:text-zinc-300"
+                    />
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Personal Notes</label>
+                  <textarea
+                    rows={4}
+                    placeholder="Add interviews guidelines, preparation links, or follow-ups..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-xs outline-none focus:border-indigo-500 dark:border-zinc-800 dark:bg-zinc-950 placeholder:text-zinc-400"
                   />
                 </div>
               </div>
-
-              {/* Notes */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Personal Notes</label>
-                <textarea
-                  rows={4}
-                  placeholder="Add interviews guidelines, preparation links, or follow-ups..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-xs outline-none focus:border-indigo-500 dark:border-zinc-800 dark:bg-zinc-950 placeholder:text-zinc-400"
-                />
-              </div>
             </div>
-          </div>
 
-          {/* Actions */}
+            {/* Actions */}
             <div className="mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-800 flex gap-2">
               <button
+                type="button"
+                onClick={handleDeleteClick}
+                disabled={isDeleting}
+                className="rounded-xl border border-red-200 px-4 py-2.5 text-xs font-semibold text-red-650 hover:bg-red-50 dark:border-red-950/30 dark:text-red-400 dark:hover:bg-red-950/20"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+              <div className="flex-1" />
+              <button
+                type="button"
                 onClick={onClose}
-                className="flex-1 rounded-xl border border-zinc-200 px-4 py-2.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                className="rounded-xl border border-zinc-200 px-4 py-2.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleSave}
                 disabled={isSaving}
-                className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white shadow hover:bg-indigo-500 disabled:bg-zinc-300 dark:disabled:bg-zinc-800"
+                className="inline-flex items-center justify-center gap-1 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white shadow hover:bg-indigo-500 disabled:bg-zinc-300 dark:disabled:bg-zinc-850"
               >
                 {isSaving ? 'Saving...' : 'Save Changes'}
               </button>
