@@ -13,6 +13,8 @@ vi.mock('next/navigation', () => ({
 
 const mockSignIn = vi.fn();
 const mockSignUp = vi.fn();
+const mockGetUser = vi.fn();
+const mockUpdateUser = vi.fn();
 
 vi.mock('@/lib/supabase/client', () => {
   return {
@@ -20,6 +22,8 @@ vi.mock('@/lib/supabase/client', () => {
       auth: {
         signInWithPassword: mockSignIn,
         signUp: mockSignUp,
+        getUser: mockGetUser,
+        updateUser: mockUpdateUser,
       },
     }),
   };
@@ -28,6 +32,8 @@ vi.mock('@/lib/supabase/client', () => {
 describe('LoginPage Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetUser.mockResolvedValue({ data: { user: null }, error: null });
+    mockUpdateUser.mockResolvedValue({ data: {}, error: null });
   });
 
   it('renders all sign-in form elements by default', () => {

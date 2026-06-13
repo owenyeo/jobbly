@@ -34,6 +34,23 @@ export default function LoginPage() {
           password,
         });
         if (error) throw error;
+
+        // Self-healing: Clean up legacy large metadata (e.g., resume embeddings) if present
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user?.user_metadata?.resume_embedding || user?.user_metadata?.resume_text) {
+            console.log('Clearing legacy user_metadata fields client-side to prevent HTTP 431...');
+            await supabase.auth.updateUser({
+              data: {
+                resume_embedding: null,
+                resume_text: null,
+              }
+            });
+          }
+        } catch (metaErr) {
+          console.warn('Failed to clean up legacy metadata on login:', metaErr);
+        }
+
         router.push('/dashboard');
       }
     } catch (err: any) {
