@@ -96,17 +96,19 @@ export async function rankNode(state: EvaluationState): Promise<Partial<Evaluati
     const magnitudeJob = Math.sqrt(jobVector.reduce((sum, val) => sum + val * val, 0));
     const normalizedJobVector = jobVector.map(val => val / (magnitudeJob || 1));
 
+    const minBound = parseFloat(process.env.SIMILARITY_MIN_BOUND || '0.3');
+    const maxBound = parseFloat(process.env.SIMILARITY_MAX_BOUND || '0.7');
     let dotProduct = 0;
     for (let i = 0; i < 1536; i++) {
       dotProduct += normalizedJobVector[i] * normalizedCandidateVector[i];
     }
 
+    const clamped = Math.min(maxBound, Math.max(minBound, dotProduct))
+
     // Map similarity score to percentage between 0 and 100
     // Cosine similarity for non-negative vectors will be between 0 and 1. We'll map it to a realistic threshold range.
-    let score = Math.round(dotProduct * 100);
+    let score = Math.round(((clamped - minBound) / (maxBound - minBound)) * 100);
     // Boundary checks
-    if (score > 98) score = 98;
-    if (score < 40) score = 45;
 
     // Determine agent decision based on matching score
     let decision: 'pass' | 'fallback' | 'drop' = 'drop';

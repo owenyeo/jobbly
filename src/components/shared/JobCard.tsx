@@ -13,15 +13,15 @@ export default function JobCard({ job, onClick }: JobCardProps) {
   const getMatchScoreColor = (score?: number) => {
     if (!score) return 'bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-300';
     if (score >= 85) return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-900/50';
-    if (score >= 70) return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-900/50';
+    if (score >= 50) return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-900/50';
     return 'bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-900/50';
   };
 
   const formattedSalary = job.salary_min && job.salary_max
     ? `$${(job.salary_min / 1000).toFixed(0)}k - $${(job.salary_max / 1000).toFixed(0)}k`
     : job.salary_min
-    ? `>= $${(job.salary_min / 1000).toFixed(0)}k`
-    : 'Salary undisclosed';
+      ? `>= $${(job.salary_min / 1000).toFixed(0)}k`
+      : 'Salary undisclosed';
 
   return (
     <div
@@ -30,7 +30,7 @@ export default function JobCard({ job, onClick }: JobCardProps) {
     >
       {/* Background soft glow on hover */}
       <div className="absolute inset-0 -z-10 rounded-xl bg-gradient-to-br from-indigo-50/50 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:from-indigo-950/20" />
-      
+
       <div className="flex items-start justify-between gap-3">
         <div>
           <h4 className="font-semibold text-zinc-900 line-clamp-1 dark:text-zinc-50 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
