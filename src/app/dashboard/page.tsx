@@ -14,40 +14,60 @@ export default function DashboardPage() {
   const [boardState, setBoardState] = useState<'success' | 'loading' | 'empty'>('success');
   const [selectedJob, setSelectedJob] = useState<JobApplication | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isScraping, setIsScraping] = useState(false);
+
+  async function loadData() {
+    try {
+      const supabase = await createClient();
+
+      const { data, error } = await supabase
+        .from('job_applications')
+        .select(`
+          *,
+          job_embeddings (
+            match_score
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      const formattedJobs = data?.map(job => ({
+        ...job,
+        match_score: job.job_embeddings?.[0]?.match_score ?? undefined
+      })) || [];
+
+      setJobs(formattedJobs);
+      setBoardState(formattedJobs.length === 0 ? 'empty' : 'success');
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      setBoardState('empty');
+    }
+  }
 
   React.useEffect(() => {
-    async function loadData() {
-      try {
-        const supabase = await createClient();
-
-        const { data, error } = await supabase
-          .from('job_applications')
-          .select(`
-            *,
-            job_embeddings (
-              match_score
-            )
-          `)
-          .order('created_at', { ascending: false });
-
-        const formattedJobs = data?.map(job => ({
-          ...job,
-          match_score: job.job_embeddings?.[0]?.match_score ?? undefined
-        })) || [];
-
-        setJobs(formattedJobs);
-        setBoardState(formattedJobs.length === 0 ? 'empty' : 'success');
-      } catch (error) {
-        console.error('Error loading dashboard data:', error);
-        setBoardState('empty');
-      }
-    }
     loadData();
   }, []);
 
-  // Trigger scraper mock action
-  const handleTriggerScraper = () => {
-    alert('Mock Action: Scraper engine triggered!');
+  // Trigger scraper action
+  const handleTriggerScraper = async () => {
+    if (isScraping) return;
+    setIsScraping(true);
+    try {
+      const res = await fetch('/api/scrape/poll', {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(`NodeFlair scraper run finished. Successfully enqueued ${data.enqueued_count} new junior engineering jobs!`);
+        // Refresh dashboard jobs list
+        await loadData();
+      } else {
+        alert(`Failed to run scraper: ${data.message || 'Unknown error'}`);
+      }
+    } catch (err: any) {
+      alert(`Scraper request failed: ${err.message}`);
+    } finally {
+      setIsScraping(false);
+    }
   };
 
   const handleJobClick = (job: JobApplication) => {
@@ -94,21 +114,43 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* State Toggle Dropdown as requested */}
-        <div className="flex items-center gap-2 self-start sm:self-center">
-          <label htmlFor="state-select" className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-            View State:
-          </label>
-          <select
-            id="state-select"
-            value={boardState}
-            onChange={(e) => setBoardState(e.target.value as any)}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium shadow-sm outline-none focus:border-indigo-500 dark:border-zinc-800 dark:bg-zinc-950"
+        {/* Controls Container */}
+        <div className="flex items-center gap-3 self-start sm:self-center">
+          {/* Trigger Scraper Button */}
+          <button
+            onClick={handleTriggerScraper}
+            disabled={isScraping}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow transition-all hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600"
           >
-            <option value="success">Loaded (Success)</option>
-            <option value="loading">Loading</option>
-            <option value="empty">Empty</option>
-          </select>
+            {isScraping ? (
+              <>
+                <svg className="animate-spin -ml-0.5 mr-1.5 h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Scraping NodeFlair...
+              </>
+            ) : (
+              'Trigger Scraper'
+            )}
+          </button>
+
+          {/* State Toggle Dropdown as requested */}
+          <div className="flex items-center gap-2">
+            <label htmlFor="state-select" className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+              View State:
+            </label>
+            <select
+              id="state-select"
+              value={boardState}
+              onChange={(e) => setBoardState(e.target.value as any)}
+              className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium shadow-sm outline-none focus:border-indigo-500 dark:border-zinc-800 dark:bg-zinc-950"
+            >
+              <option value="success">Loaded (Success)</option>
+              <option value="loading">Loading</option>
+              <option value="empty">Empty</option>
+            </select>
+          </div>
         </div>
       </div>
 

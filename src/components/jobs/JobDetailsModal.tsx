@@ -31,28 +31,48 @@ export default function JobDetailsModal({
   useEffect(() => {
     if (job) {
       setStatus(job.status);
-      setInterviewDate(''); // Default mock date empty
-      setNotes(''); // Default mock notes empty
+      setInterviewDate(job.interview_date || '');
+      setNotes(job.notes || '');
     }
   }, [job]);
 
   if (!isOpen || !job) return null;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsSaving(true);
-    setTimeout(() => {
+    try {
+      const res = await fetch(`/api/jobs/${job.uuid}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status,
+          interview_date: interviewDate || null,
+          notes: notes || null,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || 'Failed to save changes.');
+      }
+
       if (onSave) {
         onSave({
           ...job,
           status,
-          // Add custom extensions for demonstration
-          ...(interviewDate ? { interview_date: interviewDate } : {}),
-          ...(notes ? { notes } : {}),
+          interview_date: interviewDate || null,
+          notes: notes || null,
         });
       }
-      setIsSaving(false);
       onClose();
-    }, 500); // Mock delay for premium interaction feel
+    } catch (err: any) {
+      console.error('Error saving job details:', err);
+      alert(err.message || 'An error occurred while saving changes.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDeleteClick = async () => {

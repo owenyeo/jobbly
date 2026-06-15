@@ -21,6 +21,8 @@ export async function PUT(
       structured_description,
       status,
       reevaluate,
+      notes,
+      interview_date,
     } = body;
 
     const supabase = await createClient();
@@ -36,6 +38,8 @@ export async function PUT(
     if (salary_min !== undefined) updatePayload.salary_min = salary_min !== null ? Number(salary_min) : null;
     if (salary_max !== undefined) updatePayload.salary_max = salary_max !== null ? Number(salary_max) : null;
     if (structured_description !== undefined) updatePayload.structured_description = structured_description;
+    if (notes !== undefined) updatePayload.notes = notes;
+    if (interview_date !== undefined) updatePayload.interview_date = interview_date !== null ? interview_date : null;
 
     const { error: dbError } = await supabase
       .from('job_applications')

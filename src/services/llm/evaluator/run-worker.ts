@@ -60,10 +60,6 @@ import('./worker').then(({ evaluatorWorker }) => {
         }
       });
       console.log('[Worker] Repeatable NodeFlair poller registered successfully (Pattern: daily at midnight).');
-
-      // Immediate trigger for user testing/verification on startup
-      await evaluationQueue.add('poll-nodeflair', {});
-      console.log('[Worker] Enqueued immediate one-off NodeFlair poller job for testing.');
     } catch (err) {
       console.error('[Worker] Failed to register repeatable NodeFlair poller job:', err);
     }

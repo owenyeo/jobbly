@@ -35,6 +35,8 @@ export interface JobApplication {
   structured_description?: string | null;
   match_score?: number; // Calculated match score matching database or dynamic joins
   agent_decision?: 'pass' | 'fallback' | 'drop' | null;
+  notes?: string | null;
+  interview_date?: string | null;
 }
 
 export interface JobEmbedding {

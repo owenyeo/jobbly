@@ -115,7 +115,8 @@ describe('NodeFlair Poller', () => {
         company_name: 'Google',
         job_title: 'Software Engineer',
         application_link: 'https://nodeflair.com/jobs/1',
-        status: 'pending',
+        status: 'saved',
+        work_mode: 'remote',
         raw_html: null,
         agent_decision: 'pass',
       });

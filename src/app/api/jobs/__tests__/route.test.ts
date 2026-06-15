@@ -146,6 +146,31 @@ describe('Jobs API Endpoints', () => {
         job_application_uuid: 'mock-id-123',
       });
     });
+
+    it('updates notes and interview_date when provided in payload', async () => {
+      const payload = {
+        notes: 'Prepare for system design questions',
+        interview_date: '2026-06-20T10:00:00Z',
+      };
+
+      const request = new Request('http://localhost:3000/api/jobs/mock-id-123', {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+
+      const response = await PUT(request, { params: { id: 'mock-id-123' } } as any);
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body.success).toBe(true);
+
+      // Verify db update was called with the new columns
+      expect(mockUpdate).toHaveBeenCalledWith({
+        notes: 'Prepare for system design questions',
+        interview_date: '2026-06-20T10:00:00Z',
+      });
+      expect(mockEq).toHaveBeenCalledWith('uuid', 'mock-id-123');
+    });
   });
 
   describe('DELETE /api/jobs/[id]', () => {
