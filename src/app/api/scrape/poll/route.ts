@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       enqueued_count: enqueuedCount,
-      message: `Successfully polled NodeFlair listing feed and enqueued ${enqueuedCount} new jobs.`,
+      message: `Successfully polled job feeds and enqueued ${enqueuedCount} new jobs.`,
     });
   } catch (err: any) {
     console.error('[API Scrape Poll] Error triggering poller:', err);

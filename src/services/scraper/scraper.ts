@@ -5,7 +5,7 @@
 import * as cheerio from 'cheerio';
 
 export interface ScraperPayload {
-  source_platform: 'linkedin' | 'nodeflair' | 'glassdoor' | 'other';
+  source_platform: 'linkedin' | 'nodeflair' | 'glassdoor' | 'mycareersfuture' | 'greenhouse' | 'lever' | 'other';
   application_link: string;
   company_name: string;
   job_title: string;
@@ -20,6 +20,9 @@ export function identifyPlatform(url: string): ScraperPayload['source_platform']
   if (lowerUrl.includes('linkedin.com')) return 'linkedin';
   if (lowerUrl.includes('nodeflair.com')) return 'nodeflair';
   if (lowerUrl.includes('glassdoor.com')) return 'glassdoor';
+  if (lowerUrl.includes('mycareersfuture.gov.sg')) return 'mycareersfuture';
+  if (lowerUrl.includes('greenhouse.io')) return 'greenhouse';
+  if (lowerUrl.includes('lever.co')) return 'lever';
   return 'other';
 }
 
@@ -100,6 +103,47 @@ export async function scrapeJobUrl(url: string, preFetchedHtml?: string): Promis
 
   // PHASE 1: Retrieve Raw HTML
   const rawHtml = preFetchedHtml || (await fetchHtml(url));
+
+  // Special handling for MyCareersFuture JSON REST API (since it returns JSON instead of standard HTML)
+  if (platform === 'mycareersfuture') {
+    let mcfData: any = null;
+    try {
+      mcfData = JSON.parse(rawHtml);
+    } catch (e) {
+      // Not direct JSON, ignore
+    }
+
+    if (!mcfData) {
+      const uuidMatch = url.match(/([a-f0-9]{32})/i);
+      if (uuidMatch) {
+        const uuid = uuidMatch[1];
+        try {
+          const apiRes = await fetch(`https://api.mycareersfuture.gov.sg/v2/jobs/${uuid}`);
+          if (apiRes.ok) {
+            mcfData = await apiRes.json();
+          }
+        } catch (err) {
+          console.warn('Failed to fetch MyCareersFuture job detail from API:', err);
+        }
+      }
+    }
+
+    if (mcfData && mcfData.title) {
+      const job_title = mcfData.title.replace(/\s+/g, ' ').trim();
+      let company_name = mcfData.postedCompany?.name || '';
+      company_name = company_name.replace(/\s+/g, ' ').trim();
+      if (!job_title || !company_name) {
+        throw new Error('Contract validation failed: job_title or company_name could not be resolved from MyCareersFuture API.');
+      }
+      return {
+        source_platform: 'mycareersfuture',
+        application_link: url,
+        company_name,
+        job_title,
+        raw_html: mcfData.description || rawHtml,
+      };
+    }
+  }
 
   // PHASE 2: Load DOM & Extract Metadata using Cheerio
   const $ = cheerio.load(rawHtml);
@@ -186,6 +230,49 @@ export async function scrapeJobUrl(url: string, preFetchedHtml?: string): Promis
         }
         break;
 
+      case 'mycareersfuture':
+        if (!job_title) {
+          job_title = $('#job_title').first().text().trim() || $('h1').first().text().trim();
+        }
+        if (!company_name) {
+          company_name = $('#company_name').first().text().trim() || $('#company-info a').first().text().trim();
+        }
+        break;
+
+      case 'greenhouse':
+        if (!job_title) {
+          job_title = $('h1.app-title, .app-title').first().text().trim();
+        }
+        if (!company_name) {
+          company_name = $('.company-name').first().text().replace(/\bat\b/gi, '').trim();
+          if (!company_name) {
+            try {
+              const pathParts = new URL(url).pathname.split('/').filter(Boolean);
+              if (pathParts.length > 0) {
+                company_name = pathParts[0];
+              }
+            } catch (e) {}
+          }
+        }
+        break;
+
+      case 'lever':
+        if (!job_title) {
+          job_title = $('.posting-header h2, h2').first().text().trim();
+        }
+        if (!company_name) {
+          company_name = $('.logo img').first().attr('alt')?.replace(/logo/gi, '').trim() || '';
+          if (!company_name) {
+            try {
+              const pathParts = new URL(url).pathname.split('/').filter(Boolean);
+              if (pathParts.length > 0) {
+                company_name = pathParts[0];
+              }
+            } catch (e) {}
+          }
+        }
+        break;
+
       case 'other':
       default:
         break;
@@ -213,6 +300,12 @@ export async function scrapeJobUrl(url: string, preFetchedHtml?: string): Promis
   // Clean up any remaining whitespace noise
   job_title = job_title.replace(/\s+/g, ' ').trim();
   company_name = company_name.replace(/\s+/g, ' ').trim();
+
+  if (company_name) {
+    if (!/\s/.test(company_name) && company_name === company_name.toLowerCase()) {
+      company_name = company_name.charAt(0).toUpperCase() + company_name.slice(1);
+    }
+  }
 
   // PHASE 3: Contract Validation
   if (!job_title || !company_name) {

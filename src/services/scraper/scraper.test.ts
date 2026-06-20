@@ -19,6 +19,18 @@ describe('Scraper Service (TDD)', () => {
     it('returns other for unknown platforms', () => {
       expect(identifyPlatform('https://example.com/careers/developer')).toBe('other');
     });
+
+    it('correctly identifies MyCareersFuture links', () => {
+      expect(identifyPlatform('https://www.mycareersfuture.gov.sg/job/software-engineer-12345')).toBe('mycareersfuture');
+    });
+
+    it('correctly identifies Greenhouse links', () => {
+      expect(identifyPlatform('https://boards.greenhouse.io/stripe/jobs/12345')).toBe('greenhouse');
+    });
+
+    it('correctly identifies Lever links', () => {
+      expect(identifyPlatform('https://jobs.lever.co/stripe/12345')).toBe('lever');
+    });
   });
 
   describe('scrapeJobUrl() with pre-fetched HTML', () => {
@@ -62,6 +74,108 @@ describe('Scraper Service (TDD)', () => {
       const result = await scrapeJobUrl('https://nodeflair.com/jobs/1', mockNodeFlairHtml);
       expect(result.job_title).toBe('Fullstack Developer');
       expect(result.company_name).toBe('Stripe');
+    });
+
+    it('correctly parses MyCareersFuture job details from JSON API response', async () => {
+      const mockMcfJsonResponse = JSON.stringify({
+        title: 'Backend Software Engineer',
+        postedCompany: { name: 'Government Technology Agency' },
+        description: '<p>Constructed description HTML here</p>'
+      });
+      const result = await scrapeJobUrl(
+        'https://www.mycareersfuture.gov.sg/job/software-engineer-750d032230dbbb024a1b023f03b418a0',
+        mockMcfJsonResponse
+      );
+      expect(result.job_title).toBe('Backend Software Engineer');
+      expect(result.company_name).toBe('Government Technology Agency');
+      expect(result.source_platform).toBe('mycareersfuture');
+    });
+
+    it('correctly parses Greenhouse job details via JSON-LD or CSS selectors fallback', async () => {
+      // 1. JSON-LD schema
+      const mockGreenhouseLd = `
+        <html>
+          <script type="application/ld+json">
+            {
+              "@context": "http://schema.org",
+              "@type": "JobPosting",
+              "title": "Software Engineer II",
+              "hiringOrganization": {
+                "@type": "Organization",
+                "name": "Stripe"
+              }
+            }
+          </script>
+        </html>
+      `;
+      const resultLd = await scrapeJobUrl('https://boards.greenhouse.io/stripe/jobs/12345', mockGreenhouseLd);
+      expect(resultLd.job_title).toBe('Software Engineer II');
+      expect(resultLd.company_name).toBe('Stripe');
+      expect(resultLd.source_platform).toBe('greenhouse');
+
+      // 2. CSS Selectors Fallback
+      const mockGreenhouseFallback = `
+        <html>
+          <body>
+            <h1 class="app-title">Frontend Engineer</h1>
+            <span class="company-name">at Stripe</span>
+          </body>
+        </html>
+      `;
+      const resultFallback = await scrapeJobUrl('https://boards.greenhouse.io/stripe/jobs/12345', mockGreenhouseFallback);
+      expect(resultFallback.job_title).toBe('Frontend Engineer');
+      expect(resultFallback.company_name).toBe('Stripe');
+    });
+
+    it('correctly parses Lever job details via JSON-LD or CSS selectors fallback', async () => {
+      // 1. JSON-LD schema
+      const mockLeverLd = `
+        <html>
+          <script type="application/ld+json">
+            {
+              "@context": "http://schema.org",
+              "@type": "JobPosting",
+              "title": "Data Engineer",
+              "hiringOrganization": {
+                "name": "Stripe"
+              }
+            }
+          </script>
+        </html>
+      `;
+      const resultLd = await scrapeJobUrl('https://jobs.lever.co/stripe/12345', mockLeverLd);
+      expect(resultLd.job_title).toBe('Data Engineer');
+      expect(resultLd.company_name).toBe('Stripe');
+      expect(resultLd.source_platform).toBe('lever');
+
+      // 2. CSS Selectors Fallback
+      const mockLeverFallback = `
+        <html>
+          <body>
+            <div class="posting-header">
+              <h2>Site Reliability Engineer</h2>
+            </div>
+            <div class="logo">
+              <img src="/logo.png" alt="Stripe Logo" />
+            </div>
+          </body>
+        </html>
+      `;
+      const resultFallback = await scrapeJobUrl('https://jobs.lever.co/stripe/12345', mockLeverFallback);
+      expect(resultFallback.job_title).toBe('Site Reliability Engineer');
+      expect(resultFallback.company_name).toBe('Stripe');
+
+      // 3. Fallback to URL company name parsed from path when selector is missing
+      const mockLeverFallbackUrl = `
+        <html>
+          <body>
+            <h2>Platform Engineer</h2>
+          </body>
+        </html>
+      `;
+      const resultUrlFallback = await scrapeJobUrl('https://jobs.lever.co/netflix/12345', mockLeverFallbackUrl);
+      expect(resultUrlFallback.job_title).toBe('Platform Engineer');
+      expect(resultUrlFallback.company_name).toBe('Netflix');
     });
 
     it('correctly falls back for generic websites', async () => {
